@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tracker Setup</title>
+<title>Trading Setup Tracker</title>
 
 <style>
 body {
@@ -28,6 +28,7 @@ h1 { text-align: center; }
     border-radius: 8px;
     background: #e0e0e0;
     cursor: pointer;
+    font-weight: bold;
 }
 
 .setup-btn.active {
@@ -37,7 +38,7 @@ h1 { text-align: center; }
 
 .checklist { margin-top: 20px; }
 
-.item { margin: 10px 0; }
+.item { margin: 8px 0; }
 
 .score-box {
     margin-top: 20px;
@@ -64,9 +65,17 @@ h1 { text-align: center; }
 .win-btn { background: #28a745; color: white; }
 .lose-btn { background: #dc3545; color: white; }
 
-.history {
-    margin-top: 30px;
+button {
+    margin-top: 10px;
+    padding: 10px;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
 }
+
+.history { margin-top: 30px; }
 
 .history-entry {
     background: white;
@@ -86,21 +95,9 @@ h1 { text-align: center; }
     margin-bottom: 15px;
 }
 
-select {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 15px;
-    border-radius: 8px;
-}
-
-.bottom-buttons button {
-    margin-top: 10px;
-    padding: 10px;
-    width: 100%;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 15px;
+.filter-box label {
+    display: block;
+    margin-bottom: 5px;
 }
 
 .export-btn { background: #ffc107; }
@@ -111,12 +108,12 @@ select {
 
 <body>
 
-<h1>Tracker Setup</h1>
+<h1>Trading Setup Tracker</h1>
 
 <div class="setup-container">
-    <button class="setup-btn active" onclick="showSetup('setup1', this)">Setup 1</button>
-    <button class="setup-btn" onclick="showSetup('setup2', this)">Setup 2</button>
-    <button class="setup-btn" onclick="showSetup('setup3', this)">Setup 3</button>
+    <button class="setup-btn active" onclick="showSetup('LO Reversal', this)">LO Reversal</button>
+    <button class="setup-btn" onclick="showSetup('NY Continuation', this)">NY Continuation</button>
+    <button class="setup-btn" onclick="showSetup('NY Reversal', this)">NY Reversal</button>
 </div>
 
 <div id="checklist" class="checklist"></div>
@@ -137,41 +134,56 @@ select {
     <h2>Statistiques</h2>
     <div id="stats" class="stats-box"></div>
 
-    <h2>Filtrer par tâche cochée</h2>
-    <select id="taskFilter" onchange="renderHistory()">
-        <option value="">-- Aucun filtre --</option>
-    </select>
+    <h2>Filtrer par tâches cochées</h2>
+    <div id="taskFilters" class="filter-box"></div>
 
     <h2>Historique</h2>
     <div id="historyList"></div>
 
-    <div class="bottom-buttons">
-        <button class="export-btn" onclick="exportCSV()">Exporter CSV</button>
-        <button class="clear-btn" onclick="clearHistory()">Supprimer l'historique</button>
-    </div>
+    <button class="export-btn" onclick="exportCSV()">Exporter CSV</button>
+    <button class="clear-btn" onclick="clearHistory()">Supprimer l'historique</button>
 
 </div>
 
 <script>
 
 const setups = {
-    setup1: [
-        { label: "Tâche A", points: 10 },
-        { label: "Tâche B", points: 20 },
-        { label: "Tâche C", points: 30 }
-    ],
-    setup2: [
-        { label: "Action 1", points: 25 },
-        { label: "Action 2", points: 25 },
-        { label: "Action 3", points: 50 }
-    ],
-    setup3: [
-        { label: "Étape X", points: 40 },
-        { label: "Étape Y", points: 60 }
-    ]
+
+"LO Reversal": [
+"Trading conditions",
+"Biais & Liquidity",
+"Narrative",
+"Respect bias HTF (at least h1)",
+"Asia range near to HTF POI",
+"LO trades above/below Asia high/low into HTF POI",
+"SL Strong low/high m15",
+"m15 / double m5 CIOF after manipulation high/low"
+],
+
+"NY Continuation": [
+"Trading conditions",
+"Biais & Liquidity",
+"Narrative",
+"Respect bias HTF (at least h1)",
+"LO made the H/LOTD after manipulating Asia highs/lows into an HTF key level",
+"LO do not touch major DOL",
+"Wait stop run lunch highs/low and CIOF m5/m15",
+"Avoid if LO session >70 pips (NY will probably consolidate)"
+],
+
+"NY Reversal": [
+"Trading conditions",
+"Biais & Liquidity",
+"Narrative",
+"Respect bias HTF (at least h1)",
+"Asia & LO highs/lows intacts",
+"Clean DOL",
+"CIOF m5/m15 or smt"
+]
+
 };
 
-let currentSetup = "setup1";
+let currentSetup = "LO Reversal";
 let currentResult = null;
 
 function showSetup(name, btn) {
@@ -184,33 +196,40 @@ function showSetup(name, btn) {
 function renderChecklist() {
     const div = document.getElementById("checklist");
     div.innerHTML = "";
-    setups[currentSetup].forEach((item, i) => {
+
+    const pointsPerTask = 100 / setups[currentSetup].length;
+
+    setups[currentSetup].forEach((task, i) => {
         div.innerHTML += `
             <div class="item">
                 <label>
                     <input type="checkbox" id="item${i}" onchange="calculateScore()">
-                    ${item.label} (${item.points} pts)
+                    ${task} (${pointsPerTask.toFixed(1)} pts)
                 </label>
             </div>
         `;
     });
+
     calculateScore();
 }
 
 function calculateScore() {
-    let total = 0;
+    const pointsPerTask = 100 / setups[currentSetup].length;
     let gained = 0;
-    setups[currentSetup].forEach((item, i) => {
-        total += item.points;
-        if (document.getElementById("item"+i).checked) gained += item.points;
+
+    setups[currentSetup].forEach((task, i) => {
+        if (document.getElementById("item"+i).checked) {
+            gained += pointsPerTask;
+        }
     });
-    let score = total ? Math.round((gained/total)*100) : 0;
+
+    const score = Math.round(gained);
     document.getElementById("score").textContent = score;
     return score;
 }
 
 function setResult(result) {
-    currentResult = result; // plus d'alert
+    currentResult = result;
 }
 
 function saveScore() {
@@ -220,9 +239,9 @@ function saveScore() {
     }
 
     const checkedTasks = [];
-    setups[currentSetup].forEach((item, i) => {
+    setups[currentSetup].forEach((task, i) => {
         if (document.getElementById("item"+i).checked) {
-            checkedTasks.push(item.label);
+            checkedTasks.push(task);
         }
     });
 
@@ -237,6 +256,7 @@ function saveScore() {
     });
 
     localStorage.setItem("scoreHistory", JSON.stringify(history));
+
     renderHistory();
     renderStats();
 }
@@ -244,28 +264,38 @@ function saveScore() {
 function renderStats() {
     const history = JSON.parse(localStorage.getItem("scoreHistory")) || [];
     const statsDiv = document.getElementById("stats");
-    let stats = "";
+    statsDiv.innerHTML = "";
 
-    ["setup1","setup2","setup3"].forEach(setup => {
+    Object.keys(setups).forEach(setup => {
         const entries = history.filter(e => e.setup === setup);
         if (!entries.length) return;
 
         const wins = entries.filter(e => e.result === "WIN").length;
         const winRate = Math.round((wins / entries.length) * 100);
-        stats += `${setup} : ${winRate}% win rate (${wins}/${entries.length})<br>`;
+
+        statsDiv.innerHTML += `${setup} : ${winRate}% win rate (${wins}/${entries.length})<br>`;
     });
 
-    statsDiv.innerHTML = stats || "Aucune donnée";
+    if (!statsDiv.innerHTML) statsDiv.innerHTML = "Aucune donnée";
 }
 
 function renderHistory() {
     const list = document.getElementById("historyList");
-    const filter = document.getElementById("taskFilter").value;
     const history = JSON.parse(localStorage.getItem("scoreHistory")) || [];
     list.innerHTML = "";
 
+    const selectedFilters = Array.from(
+        document.querySelectorAll("#taskFilters input:checked")
+    ).map(cb => cb.value);
+
     history.slice().reverse().forEach(entry => {
-        if (filter && !entry.tasks.includes(filter)) return;
+
+        if (selectedFilters.length > 0) {
+            const hasAll = selectedFilters.every(task =>
+                entry.tasks.includes(task)
+            );
+            if (!hasAll) return;
+        }
 
         list.innerHTML += `
             <div class="history-entry">
@@ -292,6 +322,7 @@ function exportCSV() {
     if (!history.length) return alert("Aucune donnée");
 
     let csv = "Setup,Score,Result,Tasks,Date\n";
+
     history.forEach(e => {
         csv += `${e.setup},${e.score},${e.result},"${e.tasks.join(" | ")}",${e.date}\n`;
     });
@@ -300,20 +331,25 @@ function exportCSV() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "historique_setups.csv";
+    a.download = "trading_setups_history.csv";
     a.click();
 }
 
 function populateFilter() {
-    const select = document.getElementById("taskFilter");
+    const container = document.getElementById("taskFilters");
     const allTasks = new Set();
 
     Object.values(setups).forEach(setup => {
-        setup.forEach(task => allTasks.add(task.label));
+        setup.forEach(task => allTasks.add(task));
     });
 
     allTasks.forEach(task => {
-        select.innerHTML += `<option value="${task}">${task}</option>`;
+        container.innerHTML += `
+            <label>
+                <input type="checkbox" value="${task}" onchange="renderHistory()">
+                ${task}
+            </label>
+        `;
     });
 }
 
