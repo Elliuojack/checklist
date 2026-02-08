@@ -1,117 +1,215 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checklist avec score</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .setup-btn {
-            margin: 5px;
-            padding: 10px 20px;
-            cursor: pointer;
-            border: 1px solid #007bff;
-            background-color: #fff;
-            color: #007bff;
-            border-radius: 5px;
-        }
-        .setup-btn.active {
-            background-color: #007bff;
-            color: #fff;
-        }
-        .checklist {
-            margin-top: 20px;
-        }
-        .item {
-            margin: 10px 0;
-        }
-        #result {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist avec historique</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f4f6f9;
+}
+
+h1 {
+    text-align: center;
+}
+
+.setup-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.setup-btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    background: #e0e0e0;
+    cursor: pointer;
+}
+
+.setup-btn.active {
+    background: #007bff;
+    color: white;
+}
+
+.checklist {
+    margin-top: 20px;
+}
+
+.item {
+    margin: 10px 0;
+}
+
+.score-box {
+    margin-top: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+}
+
+button.save-btn {
+    margin-top: 15px;
+    padding: 10px;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    background: #28a745;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.history {
+    margin-top: 30px;
+}
+
+.history-entry {
+    background: white;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Responsive mobile */
+@media (max-width: 600px) {
+    body {
+        padding: 15px;
+    }
+}
+</style>
 </head>
+
 <body>
 
-<h1>Checklist — Score sur 100</h1>
+<h1>Checklist Score</h1>
 
-<div id="setups">
+<div class="setup-container">
     <button class="setup-btn active" onclick="showSetup('setup1')">Setup 1</button>
     <button class="setup-btn" onclick="showSetup('setup2')">Setup 2</button>
     <button class="setup-btn" onclick="showSetup('setup3')">Setup 3</button>
 </div>
 
-<div id="checklistContainer" class="checklist"></div>
+<div id="checklist" class="checklist"></div>
 
-<div id="result"></div>
+<div class="score-box">
+    Score : <span id="score">0</span> / 100
+</div>
+
+<button class="save-btn" onclick="saveScore()">Enregistrer</button>
+
+<div class="history">
+    <h2>Historique</h2>
+    <div id="historyList"></div>
+</div>
 
 <script>
-    const setups = {
-        setup1: [
-            { label: 'Tâche A (5 points)', points: 5 },
-            { label: 'Tâche B (10 points)', points: 10 },
-            { label: 'Tâche C (20 points)', points: 20 }
-        ],
-        setup2: [
-            { label: 'Étape 1 (15 points)', points: 15 },
-            { label: 'Étape 2 (5 points)', points: 5 },
-            { label: 'Étape 3 (10 points)', points: 10 }
-        ],
-        setup3: [
-            { label: 'Action X (30 points)', points: 30 },
-            { label: 'Action Y (20 points)', points: 20 }
-        ]
-    };
 
-    let currentSetup = 'setup1';
+const setups = {
+    setup1: [
+        { label: "Tâche A", points: 10 },
+        { label: "Tâche B", points: 20 },
+        { label: "Tâche C", points: 30 }
+    ],
+    setup2: [
+        { label: "Action 1", points: 25 },
+        { label: "Action 2", points: 25 },
+        { label: "Action 3", points: 50 }
+    ],
+    setup3: [
+        { label: "Étape X", points: 40 },
+        { label: "Étape Y", points: 60 }
+    ]
+};
 
-    function showSetup(name) {
-        currentSetup = name;
-        document.querySelectorAll('.setup-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.textContent.includes(name.replace('setup','Setup ')));
-        });
-        renderChecklist();
-        calculateScore();
-    }
+let currentSetup = "setup1";
 
-    function renderChecklist() {
-        const container = document.getElementById('checklistContainer');
-        container.innerHTML = '';
-        setups[currentSetup].forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = 'item';
-            div.innerHTML = `
-                <label>
-                    <input type="checkbox" id="item${index}" onchange="calculateScore()">
-                    ${item.label}
-                </label>
-            `;
-            container.appendChild(div);
-        });
-    }
-
-    function calculateScore() {
-        let totalPoints = 0;
-        let gained = 0;
-
-        setups[currentSetup].forEach((item, index) => {
-            totalPoints += item.points;
-            const checkbox = document.getElementById('item' + index);
-            if (checkbox && checkbox.checked) {
-                gained += item.points;
-            }
-        });
-
-        const score = totalPoints ? Math.round((gained / totalPoints) * 100) : 0;
-        document.getElementById('result').textContent = 'Score : ' + score + ' / 100';
-    }
-
-    // Initial rendering
+function showSetup(name) {
+    currentSetup = name;
+    document.querySelectorAll('.setup-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
     renderChecklist();
     calculateScore();
+}
+
+function renderChecklist() {
+    const checklistDiv = document.getElementById("checklist");
+    checklistDiv.innerHTML = "";
+
+    setups[currentSetup].forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+            <label>
+                <input type="checkbox" onchange="calculateScore()" id="item${index}">
+                ${item.label} (${item.points} pts)
+            </label>
+        `;
+        checklistDiv.appendChild(div);
+    });
+}
+
+function calculateScore() {
+    let totalPoints = 0;
+    let gained = 0;
+
+    setups[currentSetup].forEach((item, index) => {
+        totalPoints += item.points;
+        const checkbox = document.getElementById("item" + index);
+        if (checkbox && checkbox.checked) {
+            gained += item.points;
+        }
+    });
+
+    let score = totalPoints ? Math.round((gained / totalPoints) * 100) : 0;
+    document.getElementById("score").textContent = score;
+    return score;
+}
+
+function saveScore() {
+    const score = calculateScore();
+    const history = JSON.parse(localStorage.getItem("scoreHistory")) || [];
+
+    const entry = {
+        setup: currentSetup,
+        score: score,
+        date: new Date().toLocaleString()
+    };
+
+    history.push(entry);
+    localStorage.setItem("scoreHistory", JSON.stringify(history));
+
+    renderHistory();
+}
+
+function renderHistory() {
+    const historyList = document.getElementById("historyList");
+    const history = JSON.parse(localStorage.getItem("scoreHistory")) || [];
+    historyList.innerHTML = "";
+
+    history.reverse().forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "history-entry";
+        div.innerHTML = `
+            <strong>${entry.setup}</strong><br>
+            Score : ${entry.score} / 100<br>
+            <small>${entry.date}</small>
+        `;
+        historyList.appendChild(div);
+    });
+}
+
+// Initial load
+renderChecklist();
+renderHistory();
+
 </script>
 
 </body>
