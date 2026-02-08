@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist avec score</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .setup-btn {
+            margin: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #fff;
+            color: #007bff;
+            border-radius: 5px;
+        }
+        .setup-btn.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+        .checklist {
+            margin-top: 20px;
+        }
+        .item {
+            margin: 10px 0;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Checklist — Score sur 100</h1>
+
+<div id="setups">
+    <button class="setup-btn active" onclick="showSetup('setup1')">Setup 1</button>
+    <button class="setup-btn" onclick="showSetup('setup2')">Setup 2</button>
+    <button class="setup-btn" onclick="showSetup('setup3')">Setup 3</button>
+</div>
+
+<div id="checklistContainer" class="checklist"></div>
+
+<div id="result"></div>
+
+<script>
+    const setups = {
+        setup1: [
+            { label: 'Tâche A (5 points)', points: 5 },
+            { label: 'Tâche B (10 points)', points: 10 },
+            { label: 'Tâche C (20 points)', points: 20 }
+        ],
+        setup2: [
+            { label: 'Étape 1 (15 points)', points: 15 },
+            { label: 'Étape 2 (5 points)', points: 5 },
+            { label: 'Étape 3 (10 points)', points: 10 }
+        ],
+        setup3: [
+            { label: 'Action X (30 points)', points: 30 },
+            { label: 'Action Y (20 points)', points: 20 }
+        ]
+    };
+
+    let currentSetup = 'setup1';
+
+    function showSetup(name) {
+        currentSetup = name;
+        document.querySelectorAll('.setup-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent.includes(name.replace('setup','Setup ')));
+        });
+        renderChecklist();
+        calculateScore();
+    }
+
+    function renderChecklist() {
+        const container = document.getElementById('checklistContainer');
+        container.innerHTML = '';
+        setups[currentSetup].forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `
+                <label>
+                    <input type="checkbox" id="item${index}" onchange="calculateScore()">
+                    ${item.label}
+                </label>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function calculateScore() {
+        let totalPoints = 0;
+        let gained = 0;
+
+        setups[currentSetup].forEach((item, index) => {
+            totalPoints += item.points;
+            const checkbox = document.getElementById('item' + index);
+            if (checkbox && checkbox.checked) {
+                gained += item.points;
+            }
+        });
+
+        const score = totalPoints ? Math.round((gained / totalPoints) * 100) : 0;
+        document.getElementById('result').textContent = 'Score : ' + score + ' / 100';
+    }
+
+    // Initial rendering
+    renderChecklist();
+    calculateScore();
+</script>
+
+</body>
+</html>
