@@ -13,9 +13,7 @@ body {
     background: #f4f6f9;
 }
 
-h1 {
-    text-align: center;
-}
+h1 { text-align: center; }
 
 .setup-container {
     display: flex;
@@ -37,13 +35,9 @@ h1 {
     color: white;
 }
 
-.checklist {
-    margin-top: 20px;
-}
+.checklist { margin-top: 20px; }
 
-.item {
-    margin: 10px 0;
-}
+.item { margin: 10px 0; }
 
 .score-box {
     margin-top: 20px;
@@ -70,20 +64,6 @@ h1 {
 .win-btn { background: #28a745; color: white; }
 .lose-btn { background: #dc3545; color: white; }
 
-.save-btn, .clear-btn, .export-btn {
-    margin-top: 15px;
-    padding: 10px;
-    width: 100%;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 15px;
-}
-
-.save-btn { background: #007bff; color: white; }
-.clear-btn { background: #6c757d; color: white; }
-.export-btn { background: #ffc107; }
-
 .history {
     margin-top: 30px;
 }
@@ -99,9 +79,33 @@ h1 {
 .win { color: #28a745; font-weight: bold; }
 .lose { color: #dc3545; font-weight: bold; }
 
-@media (max-width: 600px) {
-    body { padding: 15px; }
+.stats-box {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
 }
+
+select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+}
+
+.bottom-buttons button {
+    margin-top: 10px;
+    padding: 10px;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.export-btn { background: #ffc107; }
+.clear-btn { background: #6c757d; color: white; }
+
 </style>
 </head>
 
@@ -126,13 +130,26 @@ h1 {
     <button class="lose-btn" onclick="setResult('LOSE')">LOSE</button>
 </div>
 
-<button class="save-btn" onclick="saveScore()">Enregistrer</button>
-<button class="export-btn" onclick="exportCSV()">Exporter CSV</button>
-<button class="clear-btn" onclick="clearHistory()">Supprimer l'historique</button>
+<button onclick="saveScore()">Enregistrer</button>
 
 <div class="history">
+
+    <h2>Statistiques</h2>
+    <div id="stats" class="stats-box"></div>
+
+    <h2>Filtrer par tâche cochée</h2>
+    <select id="taskFilter" onchange="renderHistory()">
+        <option value="">-- Aucun filtre --</option>
+    </select>
+
     <h2>Historique</h2>
     <div id="historyList"></div>
+
+    <div class="bottom-buttons">
+        <button class="export-btn" onclick="exportCSV()">Exporter CSV</button>
+        <button class="clear-btn" onclick="clearHistory()">Supprimer l'historique</button>
+    </div>
+
 </div>
 
 <script>
@@ -162,7 +179,6 @@ function showSetup(name, btn) {
     document.querySelectorAll('.setup-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderChecklist();
-    calculateScore();
 }
 
 function renderChecklist() {
@@ -172,12 +188,13 @@ function renderChecklist() {
         div.innerHTML += `
             <div class="item">
                 <label>
-                    <input type="checkbox" onchange="calculateScore()" id="item${i}">
+                    <input type="checkbox" id="item${i}" onchange="calculateScore()">
                     ${item.label} (${item.points} pts)
                 </label>
             </div>
         `;
     });
+    calculateScore();
 }
 
 function calculateScore() {
@@ -193,8 +210,7 @@ function calculateScore() {
 }
 
 function setResult(result) {
-    currentResult = result;
-    alert("Résultat sélectionné : " + result);
+    currentResult = result; // plus d'alert
 }
 
 function saveScore() {
@@ -203,31 +219,60 @@ function saveScore() {
         return;
     }
 
+    const checkedTasks = [];
+    setups[currentSetup].forEach((item, i) => {
+        if (document.getElementById("item"+i).checked) {
+            checkedTasks.push(item.label);
+        }
+    });
+
     const history = JSON.parse(localStorage.getItem("scoreHistory")) || [];
 
     history.push({
         setup: currentSetup,
         score: calculateScore(),
         result: currentResult,
+        tasks: checkedTasks,
         date: new Date().toLocaleString()
     });
 
     localStorage.setItem("scoreHistory", JSON.stringify(history));
-    currentResult = null;
     renderHistory();
+    renderStats();
+}
+
+function renderStats() {
+    const history = JSON.parse(localStorage.getItem("scoreHistory")) || [];
+    const statsDiv = document.getElementById("stats");
+    let stats = "";
+
+    ["setup1","setup2","setup3"].forEach(setup => {
+        const entries = history.filter(e => e.setup === setup);
+        if (!entries.length) return;
+
+        const wins = entries.filter(e => e.result === "WIN").length;
+        const winRate = Math.round((wins / entries.length) * 100);
+        stats += `${setup} : ${winRate}% win rate (${wins}/${entries.length})<br>`;
+    });
+
+    statsDiv.innerHTML = stats || "Aucune donnée";
 }
 
 function renderHistory() {
     const list = document.getElementById("historyList");
+    const filter = document.getElementById("taskFilter").value;
     const history = JSON.parse(localStorage.getItem("scoreHistory")) || [];
     list.innerHTML = "";
 
     history.slice().reverse().forEach(entry => {
+        if (filter && !entry.tasks.includes(filter)) return;
+
         list.innerHTML += `
             <div class="history-entry">
                 <strong>${entry.setup}</strong><br>
                 Score : ${entry.score}/100<br>
                 Résultat : <span class="${entry.result === 'WIN' ? 'win' : 'lose'}">${entry.result}</span><br>
+                Tâches cochées : ${entry.tasks.join(", ")}<br>
                 <small>${entry.date}</small>
             </div>
         `;
@@ -238,29 +283,44 @@ function clearHistory() {
     if (confirm("Supprimer tout l'historique ?")) {
         localStorage.removeItem("scoreHistory");
         renderHistory();
+        renderStats();
     }
 }
 
 function exportCSV() {
     const history = JSON.parse(localStorage.getItem("scoreHistory")) || [];
-    if (!history.length) return alert("Aucune donnée à exporter");
+    if (!history.length) return alert("Aucune donnée");
 
-    let csv = "Setup,Score,Result,Date\n";
+    let csv = "Setup,Score,Result,Tasks,Date\n";
     history.forEach(e => {
-        csv += `${e.setup},${e.score},${e.result},${e.date}\n`;
+        csv += `${e.setup},${e.score},${e.result},"${e.tasks.join(" | ")}",${e.date}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download = "historique_setups.csv";
     a.click();
 }
 
+function populateFilter() {
+    const select = document.getElementById("taskFilter");
+    const allTasks = new Set();
+
+    Object.values(setups).forEach(setup => {
+        setup.forEach(task => allTasks.add(task.label));
+    });
+
+    allTasks.forEach(task => {
+        select.innerHTML += `<option value="${task}">${task}</option>`;
+    });
+}
+
+populateFilter();
 renderChecklist();
 renderHistory();
+renderStats();
 
 </script>
 
